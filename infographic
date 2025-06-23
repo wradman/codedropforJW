@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The COSMOS: A Visual Exploration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0B0C10;
+            color: #C5C6C7;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .text-chartreuse {
+            color: #7FFF00; /* Vibrant Chartreuse */
+        }
+        .card {
+            background-color: #1F2833;
+            border: 1px solid #45A29E;
+        }
+        .cosmic-diagram-container {
+            position: relative;
+            width: 100%;
+            padding-bottom: 100%; /* Makes container a square for core circles */
+            margin-bottom: 2rem; /* Reduced margin */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #0B0C10;
+            border-radius: 10px;
+            overflow: hidden; /* Hide any content outside container */
+        }
+
+        /* Base styling for all layers */
+        .cosmic-layer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            background-color: rgba(15, 20, 26, 0.4); /* More visible background */
+            border-style: solid;
+            z-index: 1; /* Layers behind numbers */
+            cursor: pointer; /* Indicate interactivity */
+            transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease; /* Smooth transitions */
+        }
+        /* Hover effect */
+        .cosmic-layer:hover {
+            box-shadow: 0 0 25px rgba(102, 252, 241, 0.4);
+            transform: translate(-50%, -50%) scale(1.02);
+            border-color: #66FCF1; /* Highlight border on hover */
+        }
+        /* Active (clicked) highlight */
+        .cosmic-layer.highlight {
+            box-shadow: 0 0 35px rgba(102, 252, 241, 0.8), 0 0 15px rgba(255,255,255,0.5);
+            transform: translate(-50%, -50%) scale(1.03);
+            border-color: #7FFF00 !important; /* Stronger highlight on click */
+        }
+
+
+        /* Specific layer sizes and colors */
+        .layer-ilu { width: 10%; height: 10%; border-width: 0; background-color: #66FCF1; box-shadow: 0 0 20px #66FCF1, 0 0 30px rgba(255,255,255,0.4); z-index: 10; }
+        .layer-void { width: 25%; height: 25%; border: 3px dashed #45A29E; }
+        .layer-pinnacle { width: 40%; height: 40%; border: 2px dotted #FF6B6B; }
+        .layer-anur { width: 55%; height: 55%; border: 3px solid #C5C6C7; }
+        .layer-gud { width: 70%; height: 70%; border: 3px solid #C5C6C7; }
+        .layer-interna { width: 85%; height: 85%; border: 2px dotted #45A29E; }
+        .layer-amagi { width: 100%; height: 100%; border: 4px dashed #66FCF1; }
+
+        /* Number labels directly on layers */
+        .layer-number {
+            position: absolute;
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #C5C6C7;
+            text-shadow: 0 0 5px rgba(0,0,0,0.8);
+            z-index: 11; /* Numbers above layers */
+            pointer-events: none; /* Do not block click events on layer */
+        }
+        #number-ilu { color: #0B0C10; text-shadow: none; font-size: 1rem; } /* Special styling for center */
+
+        /* Legend / Detail Panel Styling */
+        .detail-panel {
+            background-color: #1F2833;
+            border: 1px solid #45A29E;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            text-align: center;
+            min-height: 150px; /* Ensure it doesn't collapse */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0; /* Hidden by default */
+            transition: opacity 0.5s ease;
+        }
+        .detail-panel.active {
+            opacity: 1; /* Show when active */
+        }
+        .detail-panel-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #66FCF1;
+            margin-bottom: 0.5rem;
+        }
+        .detail-panel-description {
+            font-size: 1rem;
+            color: #A9B1B8;
+            margin-bottom: 1rem;
+        }
+        .llm-button {
+            background-color: #45A29E;
+            color: #0B0C10;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .llm-button:hover {
+            background-color: #66FCF1;
+            transform: translateY(-2px);
+        }
+        .llm-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .llm-output {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px dashed #45A29E;
+            font-style: italic;
+            color: #999;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #66FCF1;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin-top: 1rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Narrative Plan:
+    1. Title & Hook: Introduce "The COSMOS" with a stunning visual of its structure.
+    2. The Origin: Detail the "Cosmic Egg" (ILU) as the central point.
+    3. The Great Expanse: Use a grid layout to detail each major cosmic layer (Void, Pinnacle, Anur, Gud, Interna, Ama-Gi) using cards and charts.
+    4. Conclusion: A final summary of the cosmic structure.
+    -->
+    <!-- Color Palette: "Cosmic & Mysterious" (#0B0C10, #1F2833, #C5C6C7, #66FCF1, #45A29E) -->
+    <!-- Visualization Choices:
+    - Cosmic Hierarchy -> Custom HTML/CSS Diagram (Goal: Organize) -> Best for showing nested structure without SVG.
+    - Anunnak Systems (now integrated into Ama-Gi's historical context) -> Bar Chart (Goal: Compare) -> Simple comparison of system count.
+    - Gud Factions -> Donut Chart (Goal: Compare) -> Shows composition/status of civilizations.
+    - Ama-Gi Attributes -> Radar Chart (Goal: Compare) -> Ideal for comparing multiple quantitative variables (Radiation, UV, Incarnate).
+    - Arcanum Systems (in Ama-Gi) -> Bar Chart (Goal: Compare) -> Ranks the foundational systems.
+    - All charts implemented with Chart.js on Canvas.
+    -->
+    <!-- Confirmation: Neither Mermaid JS nor SVG graphics were used in this document. All diagrams and charts are implemented with HTML/CSS/Tailwind and the Chart.js Canvas renderer. -->
+
+    <div class="container mx-auto px-4 py-8 md:py-12">
+
+        <header class="text-center mb-12 md:mb-20">
+            <h1 class="text-4xl md:text-6xl font-black uppercase tracking-wider text-chartreuse">The Cosmos</h1>
+            <p class="mt-4 max-w-3xl mx-auto text-lg text-gray-400">An immersive journey through the hierarchical structure of a universe, from the singularity of creation to the oldest, most mysterious frontiers.</p>
+        </header>
+
+        <section id="structure" class="mb-16 md:mb-24">
+            <h2 class="text-3xl font-bold text-center mb-4 text-chartreuse">The Universal Architecture</h2>
+            <p class="text-center max-w-2xl mx-auto mb-8 text-gray-400">Click on any cosmic layer in the diagram below to learn more about its unique place in the universe's grand structure.</p>
+            
+            <div class="max-w-2xl mx-auto flex flex-col items-center">
+                <div class="cosmic-diagram-container">
+                    <!-- Layers with unique IDs -->
+                    <div id="layer-amagi" class="cosmic-layer layer-amagi" data-layer="Ama-Gi"></div>
+                    <div id="layer-interna" class="cosmic-layer layer-interna" data-layer="The Interna"></div>
+                    <div id="layer-gud" class="cosmic-layer layer-gud" data-layer="Gud"></div>
+                    <div id="layer-anur" class="cosmic-layer layer-anur" data-layer="Anur"></div>
+                    <div id="layer-pinnacle" class="cosmic-layer layer-pinnacle" data-layer="The Pinnacle"></div>
+                    <div id="layer-void" class="cosmic-layer layer-void" data-layer="The Void"></div>
+                    <div id="layer-ilu" class="cosmic-layer layer-ilu" data-layer="ILU"></div>
+
+                    <!-- Numbers -->
+                    <div class="layer-number" id="number-ilu">0</div>
+                    <div class="layer-number" id="number-void">1</div>
+                    <div class="layer-number" id="number-pinnacle">2</div>
+                    <div class="layer-number" id="number-anur">3</div>
+                    <div class="layer-number" id="number-gud">4</div>
+                    <div class="layer-number" id="number-interna">5</div>
+                    <div class="layer-number" id="number-amagi">6</div>
+                </div>
+
+                <!-- Detail Panel -->
+                <div id="layerDetailPanel" class="detail-panel w-full max-w-xl">
+                    <p class="detail-panel-title">Click a Layer to Explore</p>
+                    <p class="detail-panel-description">Select any concentric ring in the diagram above to view its detailed description and role within The Cosmos.</p>
+                    <button id="generateInsightBtn" class="llm-button mt-4 hidden">✨ Generate Cosmic Insight</button>
+                    <div id="llmOutput" class="llm-output hidden"></div>
+                    <div id="loadingSpinner" class="loading-spinner hidden"></div>
+                </div>
+            </div>
+        </section>
+
+
+        <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+
+            <div class="card rounded-lg shadow-lg p-6 md:col-span-2 lg:col-span-3">
+                <h3 class="text-2xl font-bold mb-2 text-chartreuse">The Genesis: ILU, The Cosmic Egg</h3>
+                <p class="text-gray-400">At the absolute center of all existence lies ILU, the beginning of creation. It is not a place, but a singular event and a point of infinite density from which all time, space, and life emerged. It is the engine of expansion, its primordial energy still pushing the boundaries of the cosmos outward.</p>
+            </div>
+
+            <div class="card rounded-lg shadow-lg p-6">
+                 <h3 class="text-xl font-bold mb-4">The Void</h3>
+                 <p class="text-gray-400">The first sphere of existence surrounding ILU is The Void, a vast, near-empty expanse where the fundamental laws of physics are still fluid. It is a place of profound silence and darkness, home only to the enigmatic and powerful entities known as the Tercet.</p>
+            </div>
+
+             <div class="card rounded-lg shadow-lg p-6">
+                <h3 class="text-xl font-bold mb-4">The Pinnacle: A Volatile Boundary</h3>
+                <p class="text-gray-400">The Pinnacle is a formidable, volatile energy barrier that separates The Void from the newest expansions of the cosmos, the Anur region. Navigating this boundary is a significant challenge for nascent interstellar societies.</p>
+            </div>
+
+            <div class="card rounded-lg shadow-lg p-6">
+                <h3 class="text-xl font-bold mb-4">Anur: The Expanding Frontier</h3>
+                <p class="text-gray-400">Anur represents the area of new expansion within the cosmos, encompassing the newest galaxies and the most recent periods of time. This dynamic frontier is constantly being redefined as the universe continues its outward growth, directly bordering The Pinnacle and leading into more established regions.</p>
+            </div>
+
+            <div class="card rounded-lg shadow-lg p-6">
+                <h3 class="text-xl font-bold mb-4">Gud: Established Society</h3>
+                <p class="text-gray-400 mb-4">The Gud expanse contains established civilizations that have developed enough to join the greater civilizations of the cosmos. It's a region of complex politics, alliances, and sophisticated societies, situated between the newer Anur expansion and The Interna boundary.</p>
+                 <div class="chart-container h-48 max-h-48">
+                    <canvas id="gudChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card rounded-lg shadow-lg p-6">
+                <h3 class="text-xl font-bold mb-4">The Interna: Bridging Eras</h3>
+                <p class="text-gray-400">The Interna is a significant boundary zone, comprised of a colonized group of asteroids and planetoids. It serves as a transitional area, separating the established Gud region from the ancient and outermost Ama-Gi civilization. Historically, it was once thought to be the very beginning of life.</p>
+            </div>
+
+            <div class="card rounded-lg shadow-lg p-6 md:col-span-2 lg:col-span-3">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-2xl font-bold mb-2 text-chartreuse">Ama-Gi: The Ancient, Outermost Civilization</h3>
+                        <p class="text-gray-400 mb-4">Ama-Gi is the oldest civilization zone and, paradoxically, the outermost portion of the cosmos. Having existed for eons, its influence encompasses the entirety of the known universe. It is a region defined by its extreme environment and profound concentrations of unique energies.</p>
+                        <p class="text-gray-400 font-semibold mt-4">Key Environmental Attributes:</p>
+                        <ul class="list-disc list-inside text-gray-400">
+                            <li><span class="font-bold text-teal-300">Harsh Radiations:</span> Characterized by dangerously high levels of ultraviolet and other forms of radiation, making it inhospitable to lesser life forms.</li>
+                            <li><span class="font-bold text-teal-300">Incarnate Nexus:</span> It hosts the highest concentration of "Incarnate"—beings gifted with special powers directly from the creator, hinting at Ama-Gi's deep connection to the universe's origin.</li>
+                        </ul>
+                    </div>
+                    <div class="chart-container h-72 md:h-80 max-h-96">
+                        <canvas id="amagiAttributesChart"></canvas>
+                    </div>
+                </div>
+                 <div class="mt-8">
+                    <h4 class="text-xl font-bold mb-4 text-center">The Arcanum System: The Original 8</h4>
+                    <p class="text-center text-gray-400 mb-6">Within the Ama-Gi layer resides the Arcanum system, home to the "Original 8" systems—believed to be among the first stable civilizations in existence. Their influence resonates throughout the cosmos.</p>
+                     <div class="chart-container h-72 md:h-80 max-h-96">
+                        <canvas id="arcanumSystemsChart"></canvas>
+                    </div>
+                     <p class="text-center text-gray-400 mt-4">Historically, the broader "Anunnak" zone, with systems like Ymir and Hastra, represents the very first seeded areas during the grand expansion, now understood to be ancient extensions within the vast Ama-Gi territory, or perhaps a precursor phase to its full development. These pioneering systems laid the groundwork for the universe's initial spread.</p>
+                      <div class="chart-container h-72 md:h-80 max-h-96 mt-6">
+                            <canvas id="anunnakChart"></canvas>
+                        </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const wrapLabels = (label, maxWidth) => {
+                if (typeof label !== 'string' || label.length <= maxWidth) {
+                    return label;
+                }
+                const words = label.split(' ');
+                let lines = [];
+                let currentLine = '';
+                words.forEach(word => {
+                    if ((currentLine + word).length > maxWidth) {
+                        lines.push(currentLine.trim());
+                        currentLine = '';
+                    }
+                    currentLine += word + ' ';
+                });
+                lines.push(currentLine.trim());
+                return lines.filter(line => line.length > 0);
+            };
+
+            const chartTooltipConfig = {
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                const item = tooltipItems[0];
+                                let label = item.chart.data.labels[item.dataIndex];
+                                if (Array.isArray(label)) {
+                                  return label.join(' ');
+                                }
+                                return label;
+                            }
+                        }
+                    },
+                    legend: {
+                        labels: {
+                           color: '#C5C6C7'
+                        }
+                    }
+                }
+            };
+
+            const textColor = '#C5C6C7';
+            const gridColor = 'rgba(197, 198, 199, 0.2)';
+            const aqua = '#66FCF1';
+            const teal = '#45A29E';
+            const red = '#FF6B6B';
+            const silver = '#C5C6C7';
+            const darkSilver = '#8d8e8f';
+
+
+            const anCtx = document.getElementById('anunnakChart');
+            if(anCtx) {
+                new Chart(anCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Ymir System', 'Hastra System', 'Essel System', 'Galdan System', 'Kratowa', 'Da’Gota'],
+                        datasets: [{
+                            label: 'Conceptual Planetary Presence',
+                            data: [12, 9, 7, 8, 10, 5],
+                            backgroundColor: 'rgba(102, 252, 241, 0.6)',
+                            borderColor: aqua,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        ...chartTooltipConfig,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        scales: {
+                            x: {
+                                ticks: { color: textColor },
+                                grid: { color: gridColor }
+                            },
+                            y: {
+                                ticks: { color: textColor },
+                                grid: { color: gridColor }
+                            }
+                        }
+                    }
+                });
+            }
+
+            const gudCtx = document.getElementById('gudChart');
+            if(gudCtx) {
+                new Chart(gudCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Styrtan (Ascension Origin)', 'Taras (Opposition)', 'Mikil (Established)', 'Lakash (Established)'],
+                        datasets: [{
+                            label: 'Gud Civilizations Status',
+                            data: [30, 25, 30, 15], /* Adjusted data to sum to 100 conceptually */
+                            backgroundColor: [teal, darkSilver, aqua, silver],
+                            borderColor: '#1F2833',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        ...chartTooltipConfig,
+                        maintainAspectRatio: false,
+                        cutout: '50%'
+                    }
+                });
+            }
+            
+            const amagiAttrCtx = document.getElementById('amagiAttributesChart');
+            if(amagiAttrCtx) {
+                new Chart(amagiAttrCtx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['UV Exposure', 'Radiation Levels', 'Incarnate Concentration', 'Energy Output', 'Age'],
+                        datasets: [{
+                            label: 'Ama-Gi Zone Attributes',
+                            data: [95, 98, 85, 90, 100],
+                            fill: true,
+                            backgroundColor: 'rgba(102, 252, 241, 0.2)',
+                            borderColor: aqua,
+                            pointBackgroundColor: aqua,
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: aqua
+                        }]
+                    },
+                    options: {
+                        ...chartTooltipConfig,
+                        maintainAspectRatio: false,
+                        scales: {
+                            r: {
+                                angleLines: { color: gridColor },
+                                grid: { color: gridColor },
+                                pointLabels: { color: textColor, font: { size: 12 } },
+                                ticks: {
+                                    backdropColor: 'transparent',
+                                    color: textColor,
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            const arcanumSysCtx = document.getElementById('arcanumSystemsChart');
+            if(arcanumSysCtx) {
+                new Chart(arcanumSysCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Arcanum', 'Hytin', 'Kanan', 'Ertaline', 'Gwaton', 'Iveta', 'Dhakeh', 'Tondali'],
+                        datasets: [{
+                            label: 'Conceptual Influence Level',
+                            data: [95, 88, 85, 78, 92, 70, 68, 81],
+                            backgroundColor: 'rgba(69, 162, 158, 0.6)',
+                            borderColor: teal,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                         ...chartTooltipConfig,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: textColor },
+                                grid: { color: gridColor }
+                            },
+                             x: {
+                                ticks: { color: textColor },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Interactive Layers Logic
+            const layerDetails = {
+                "ILU": {
+                    title: "ILU: The Cosmic Egg",
+                    description: "The absolute center and origin of all existence. A singular event and point of infinite density from which all time, space, and life emerged, continuously expanding the cosmos."
+                },
+                "The Void": {
+                    title: "The Void",
+                    description: "The first sphere surrounding ILU. A vast, near-empty expanse where fundamental physics are fluid, home to the enigmatic Tercet."
+                },
+                "The Pinnacle": {
+                    title: "The Pinnacle",
+                    description: "A formidable, volatile energy barrier that separates The Void from the newest expansions, Anur. A significant challenge for nascent interstellar societies."
+                },
+                "Anur": {
+                    title: "Anur: The Expanding Frontier",
+                    description: "The area of new expansion, encompassing the newest galaxies and recent time. A dynamic frontier constantly redefined by the universe's outward growth."
+                },
+                "Gud": {
+                    title: "Gud: Established Society",
+                    description: "An expanse of seeded galaxies with established, sophisticated civilizations. A region of complex politics and alliances, between Anur and The Interna."
+                },
+                "The Interna": {
+                    title: "The Interna: Bridging Eras",
+                    description: "A significant boundary zone of colonized asteroids/planetoids. It serves as a transitional area, separating the established Gud region from the ancient and outermost Ama-Gi civilization."
+                },
+                "Ama-Gi": {
+                    title: "Ama-Gi: The Ancient, Outermost Civilization",
+                    description: "The oldest civilization zone and outermost portion of the cosmos. Characterized by extreme radiation and the highest concentration of Incarnate beings. The Arcanum system resides here."
+                }
+            };
+
+            const cosmicLayers = document.querySelectorAll('.cosmic-layer');
+            const detailPanel = document.getElementById('layerDetailPanel');
+            // Re-fetch these elements when content is updated dynamically
+            let generateInsightBtn;
+            let llmOutput;
+            let loadingSpinner;
+
+            let currentLayerName = null; // Store the currently selected layer
+
+            function initializeDetailPanelElements() {
+                generateInsightBtn = document.getElementById('generateInsightBtn');
+                llmOutput = document.getElementById('llmOutput');
+                loadingSpinner = document.getElementById('loadingSpinner');
+            }
+
+
+            cosmicLayers.forEach(layer => {
+                layer.addEventListener('click', function() {
+                    // Remove highlight from all layers
+                    cosmicLayers.forEach(l => l.classList.remove('highlight'));
+                    // Add highlight to the clicked layer
+                    this.classList.add('highlight');
+
+                    // Update detail panel
+                    currentLayerName = this.dataset.layer;
+                    const details = layerDetails[currentLayerName];
+                    if (details) {
+                        detailPanel.innerHTML = `
+                            <p class="detail-panel-title">${details.title}</p>
+                            <p class="detail-panel-description">${details.description}</p>
+                            <button id="generateInsightBtn" class="llm-button mt-4">✨ Generate Cosmic Insight</button>
+                            <div id="llmOutput" class="llm-output hidden"></div>
+                            <div id="loadingSpinner" class="loading-spinner hidden"></div>
+                        `;
+                        detailPanel.classList.add('active'); // Show panel
+
+                        // Re-initialize elements after innerHTML update
+                        initializeDetailPanelElements();
+                        // Re-attach event listener to the new button
+                        generateInsightBtn.addEventListener('click', generateCosmicInsight);
+                    } else {
+                        detailPanel.innerHTML = `
+                            <p class="detail-panel-title">Information Not Available</p>
+                            <p class="detail-panel-description">No specific details found for this layer.</p>
+                        `;
+                        detailPanel.classList.add('active');
+                        currentLayerName = null; // Reset if no details
+                        // Re-initialize elements (they will be hidden by default if not present)
+                        initializeDetailPanelElements();
+                    }
+                    llmOutput.classList.add('hidden'); // Hide previous LLM output
+                    loadingSpinner.classList.add('hidden'); // Hide spinner
+                });
+            });
+
+            // Function to generate cosmic insight using Gemini API
+            async function generateCosmicInsight() {
+                if (!currentLayerName || !generateInsightBtn || !llmOutput || !loadingSpinner) return;
+
+                const details = layerDetails[currentLayerName];
+                if (!details) return;
+
+                const insightPrompt = `Based on the description of ${details.title}: "${details.description}", generate a short, intriguing cosmic insight or a piece of lore that expands on its nature or a mystery within it. Keep it concise, under 100 words, and in a mystical or scientific tone relevant to the layer.`;
+
+                llmOutput.classList.add('hidden');
+                loadingSpinner.classList.remove('hidden'); // Show loading spinner
+                generateInsightBtn.disabled = true; // Disable button during loading
+
+                try {
+                    let chatHistory = [];
+                    chatHistory.push({ role: "user", parts: [{ text: insightPrompt }] });
+                    const payload = { contents: chatHistory };
+                    const apiKey = ""; // Canvas will provide this at runtime
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        llmOutput.textContent = `✨ Cosmic Insight: "${text}"`;
+                        llmOutput.classList.remove('hidden');
+                    } else {
+                        llmOutput.textContent = "Failed to generate insight. Please try again.";
+                        llmOutput.classList.remove('hidden');
+                        console.error("Gemini API returned unexpected structure:", result);
+                    }
+                } catch (error) {
+                    llmOutput.textContent = "Error generating insight. Please check console for details.";
+                    llmOutput.classList.remove('hidden');
+                    console.error("Error calling Gemini API:", error);
+                } finally {
+                    loadingSpinner.classList.add('hidden'); // Hide loading spinner
+                    generateInsightBtn.disabled = false; // Re-enable button
+                }
+            }
+
+            // Set initial state of the detail panel and initialize elements
+            detailPanel.classList.remove('active');
+            initializeDetailPanelElements();
+        });
+    </script>
+</body>
+</html>
